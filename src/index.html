@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Draw Rectangles</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <button id="clearButton" class="but">Clear</button>
+    <!-- <button id="closeButton" class="but">Close</button> -->
+
+    <script>
+        "use strict";
+        let canvas = document.getElementById("canvas");
+        let clearButton = document.getElementById("clearButton");
+        // canvas.width = canvas.height = 640;
+
+        canvas.width = window.outerWidth;
+        canvas.height = window.outerHeight;
+
+        let context = canvas.getContext("2d");
+
+        function updateCanvasSize() {
+            context.canvas.width = window.outerWidth;
+            context.canvas.height = window.outerHeight;
+            redrawRectangles();
+        }
+
+        function getRandomInt(max) {
+            return Math.floor(Math.random() * Math.floor(max));
+        }
+
+        function Position(x, y) {
+            return {
+                x: x ? parseInt(x) : 0,
+                y: y ? parseInt(y) : 0,
+                sub: function(another) {
+                    if (another.constructor == Position)
+                        return Position(
+                            this.x - another.x,
+                            this.y - another.y
+                        );
+                    else
+                        return Position();
+                },
+                add: function(another) {
+                    if (another.constructor == Position)
+                        return Position(
+                            this.x + another.x,
+                            this.y + another.y
+                        );
+                    else
+                        return Position();
+                }
+            };
+        }
+
+        function Rectangle(beginPos, endPos) {
+            return {
+                beginPos: beginPos && beginPos.constructor == Position ? beginPos : new Position(),
+                endPos: endPos && endPos.constructor == Position ? endPos : new Position(),
+                width: function() {
+                    return this.endPos.x - this.beginPos.x;
+                },
+                height: function() {
+                    return this.endPos.y - this.beginPos.y;
+                },
+                color: {
+                    r: getRandomInt(255),
+                    g: getRandomInt(255),
+                    b: getRandomInt(255),
+                    toRGBString: function() {
+                        return "rgb(" + this.r + "," + this.g + "," + this.b + ")";
+                    },
+
+                    toRGBAString: function(a) {
+                        a = a && Number(a) === a && a % 1 !== 0 && 0 <= a && a <= 1 ? a : 0.5;
+                        return "rgba(" + this.r + "," + this.g + "," + this.b + "," + a.toString() + ")";
+                    }
+                },
+                draw: function() {
+                    context.lineWidth = 5;
+                    context.setLineDash([]);
+                    context.beginPath();
+                    context.rect(this.beginPos.x, this.beginPos.y, this.width(), this.height());
+                    context.strokeStyle = this.color.toRGBString();
+                    context.closePath()
+                    context.stroke();
+                    context.fillStyle = this.color.toRGBAString(0.3);
+                    context.fillRect(this.beginPos.x, this.beginPos.y, this.width(), this.height());
+                }
+
+            }
+        }
+
+        function getCanvasPos() {
+            return new Position(canvas.offsetLeft, canvas.offsetTop);
+        }
+
+        function getMousePosition(evt) {
+            var canvasPos = getCanvasPos();
+            return new Position(
+                parseInt(evt.clientX - canvasPos.x),
+                parseInt(evt.clientY - canvasPos.y),
+            );
+        }
+
+        let rectangles = [];
+        let lastRectangle = new Rectangle();
+        let isMouseDown = false;
+        let isMouseMove = false;
+
+        function clear() {
+            rectangles = [];
+            lastRectangle = new Rectangle();
+            isMouseDown = false;
+            redrawRectangles();
+        }
+
+        function redrawRectangles() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            for (var rectangleIndex in rectangles)
+                rectangles[rectangleIndex].draw();
+        }
+
+        canvas.onmousedown = function(evt) {
+            evt.stopPropagation();
+            if (isMouseDown) return;
+            isMouseDown = true;
+            lastRectangle.beginPos = getMousePosition(evt);
+        }
+
+        canvas.onmouseup = function(evt) {
+            var doCleanup = function() {
+                isMouseMove = false;
+                lastRectangle = new Rectangle();
+                isMouseDown = false;
+            }
+            evt.stopPropagation();
+            if (!isMouseDown) return;
+            if (!isMouseMove) return doCleanup();
+            rectangles.push(lastRectangle);
+            redrawRectangles();
+            doCleanup();
+        }
+
+        canvas.onmouseleave = canvas.onmouseup;
+
+        canvas.onmousemove = function(evt) {
+            evt.stopPropagation();
+            if (!isMouseDown) return;
+            isMouseMove = true;
+            lastRectangle.endPos = getMousePosition(evt);
+            redrawRectangles();
+            lastRectangle.draw();
+            context.strokeStyle = "black";
+            context.lineWidth = 2;
+            context.setLineDash([5, 15]);
+            context.moveTo(lastRectangle.beginPos.x, lastRectangle.beginPos.y);
+            context.beginPath;
+            context.lineTo(lastRectangle.endPos.x, lastRectangle.endPos.y);
+            context.stroke();
+            context.setLineDash([]);
+        }
+
+        clearButton.onclick = clear;
+        clearButton.onmousedown = canvas.onmousedown;
+        clearButton.onmouseup = canvas.onmouseup;
+        clearButton.onmouseleave = clearButton.onmouseenter = clearButton.onmousemove = canvas.onmousemove;
+
+        // document.body.onmousedown = updateCanvasSize;
+        document.onmousemove = updateCanvasSize;
+        window.onresize = updateCanvasSize;
+    </script>
+</body>
+
+</html>
